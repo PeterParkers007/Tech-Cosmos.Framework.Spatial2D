@@ -16,6 +16,8 @@ namespace TechCosmos.Spatial2D
             public ShapeType shape;
             public float x, y;
             public float a, b;
+            public float restA, restB;
+            public float scaleX, scaleY;
             public float angle;
             public int layer;
             public object userData;
@@ -132,7 +134,8 @@ namespace TechCosmos.Spatial2D
             int i = body.index;
             Unindex(i);
             Slot slot = _slots[i];
-            slot.a = radius;
+            slot.restA = radius;
+            WriteCurrentSize(ref slot);
             _slots[i] = slot;
             Index(i);
         }
@@ -147,10 +150,44 @@ namespace TechCosmos.Spatial2D
             int i = body.index;
             Unindex(i);
             Slot slot = _slots[i];
-            slot.a = width * 0.5f;
-            slot.b = height * 0.5f;
+            slot.restA = width * 0.5f;
+            slot.restB = height * 0.5f;
+            WriteCurrentSize(ref slot);
             _slots[i] = slot;
             Index(i);
+        }
+
+        /// <summary>人的缩放是几就写几。框按 1 倍时的尺寸乘这个数。不是叠乘。</summary>
+        public void SetScale(SpatialBody body, float scaleX, float scaleY)
+        {
+            if (!IsAlive(body))
+                return;
+
+            int i = body.index;
+            Slot slot = _slots[i];
+            if (slot.scaleX == scaleX && slot.scaleY == scaleY)
+                return;
+
+            Unindex(i);
+            slot.scaleX = scaleX;
+            slot.scaleY = scaleY;
+            WriteCurrentSize(ref slot);
+            _slots[i] = slot;
+            Index(i);
+        }
+
+        public void GetScale(SpatialBody body, out float scaleX, out float scaleY)
+        {
+            if (!IsAlive(body))
+            {
+                scaleX = 1f;
+                scaleY = 1f;
+                return;
+            }
+
+            Slot slot = _slots[body.index];
+            scaleX = slot.scaleX;
+            scaleY = slot.scaleY;
         }
 
         public ShapeType GetShape(SpatialBody body)
@@ -318,6 +355,10 @@ namespace TechCosmos.Spatial2D
                 y = y,
                 a = a,
                 b = b,
+                restA = a,
+                restB = b,
+                scaleX = 1f,
+                scaleY = 1f,
                 angle = angle,
                 layer = layer,
                 body = body
@@ -510,6 +551,23 @@ namespace TechCosmos.Spatial2D
 
         static bool PassMask(int layer, int mask)
             => mask == AllLayers || (layer & mask) != 0;
+
+        static float Abs(float v) => v < 0f ? -v : v;
+
+        static void WriteCurrentSize(ref Slot slot)
+        {
+            float sx = Abs(slot.scaleX);
+            float sy = Abs(slot.scaleY);
+            if (slot.shape == ShapeType.Circle)
+            {
+                slot.a = slot.restA * sx;
+                slot.b = 0f;
+                return;
+            }
+
+            slot.a = slot.restA * sx;
+            slot.b = slot.restB * sy;
+        }
 
         void Index(int i)
         {

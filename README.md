@@ -71,9 +71,9 @@ Unity 自带的 `Rigidbody2D` / `Collider2D` 是另一套。本包装的是「�
 
 两条用底层的路：
 
-| 用法 | 谁调 `SetPosition` |
-|------|-------------------|
-| 挂了 `CircleArea2D` / `RectArea2D` | 你的移动逻辑对 `area.Body.SetPosition`，或偶尔 `area.SyncPose()` |
+| 用法 | 谁写 Body |
+|------|----------|
+| 挂了 `CircleArea2D` / `RectArea2D` | 走路 `SetPosition` 或 `SyncPosition`；缩放 `SetScale` 或 `SyncScale`；两个都变了用 `SyncPose` |
 | 不挂组件，纯代码 `world.AddCircle` | 你自己拿着返回的 `SpatialBody` 调 |
 
 底层只有一个入口：`body.SetPosition(x, y)`。组件**不会**在 `Update` / `LateUpdate` 里自动调它。
@@ -86,15 +86,17 @@ Unity 自带的 `Rigidbody2D` / `Collider2D` 是另一套。本包装的是「�
 
 ### 圆
 
-- 数据：中心 `(x, y)` + 半径 `radius`
+- 数据：中心 `(x, y)` + 半径 `radius`（**缩放为 1 时**的半径）
 - API：`AddCircle(x, y, radius)`
+- 实际判定半径 = 这个半径 × |缩放X|。两边一样大时就是 × 那个数。
 
 ### 矩形（第一版轴对齐）
 
-- 数据：中心 `(x, y)` + **全宽** `width` + **全高** `height`
+- 数据：中心 `(x, y)` + **全宽** `width` + **全高** `height`（都是 **缩放为 1 时** 的尺寸）
 - 中心在矩形正中间，不是左下角
 - 内部按半宽半高存储
-- `AddRect(..., angle)` 和 `SetRotation` **已留接口，第一版不参与判定**。现在矩形始终按轴对齐算。Gizmos 也按轴对齐画。
+- 实际判定宽高 = 1 倍尺寸 × |缩放|
+- `AddRect(..., angle)` 和 `SetRotation` **已留接口，第一版不参与判定**。现在矩形始终按轴对齐算。Gizmos 按当前缩放画，不转角。
 
 ### 坐标
 
@@ -147,21 +149,28 @@ world.Remove(unit);
 
 `Add*` 返回的 `SpatialBody` 请自己拿着。注销后 `body.IsValid == false`。
 
-### 改位置 / 改尺寸 / 改层
+### 改位置 / 改尺寸 / 改缩放 / 改层
 
 ```csharp
 body.SetPosition(newX, newY);
 body.GetPosition(out float x, out float y);
 
-body.SetCircle(0.8f);          // 仅圆
-body.SetRect(1.2f, 2f);        // 仅矩形，参数仍是全宽全高
+body.SetCircle(0.8f);          // 仅圆：改的是缩放为 1 时的半径
+body.SetRect(1.2f, 2f);        // 仅矩形：改的是缩放为 1 时的全宽全高
+body.SetScale(2f);             // 人现在是 2 倍，框也是 2 倍
+body.SetScale(1.2f, 1.2f);     // 两边一样就两个数都写这个
+body.GetScale(out float sx, out float sy);
 body.Layer = 1 << 2;
 body.UserData = myUnit;        // 任意引用，查询后找回业务对象
 
 body.SetRotation(30f);         // 第一版写入即忘，不参与重叠
 ```
 
-没动的 Body 不要每帧 `SetPosition`。没变会早退，但少调更好。
+人的缩放是几就 `SetScale` 写几。变成 2 就是 2，变成 1 就是 1，变成 1.5 就是 1.5。**不是叠乘**：连续写 `SetScale(2)` 两次，框还是 2 倍，不会变成 4 倍。负数当翻转，大小按绝对值。
+
+圆两边倍数不一样时，只用 X。你们平时两边一样，`SetScale(2)` 或 `SetScale(2, 2)` 都行。
+
+没动的 Body 不要每帧 `SetPosition` / `SetScale`。没变会早退，但少调更好。缩放没变就别写。
 
 ### 重叠查询
 
@@ -250,16 +259,16 @@ foreach (var hit in hits)
 
 | 组件 | 对标 | Inspector |
 |------|------|-----------|
-| `CircleArea2D` | CircleCollider2D | 半径、Offset、Layer |
-| `RectArea2D` | BoxCollider2D | 宽、高、Offset、Layer、Angle（预留） |
+| `CircleArea2D` | CircleCollider2D | 半径、Offset、Layer。拖边：对边不动、圆心跟着走；拖中间：只挪位置 |
+| `RectArea2D` | BoxCollider2D | 宽、高、Offset、Layer、Angle（预留）。Scene 里拖四条边中间的点改大小，对边不动 |
 | `Spatial2DWorld` | 无（可选） | 网格边长。场景里最多有效一份 |
 
 一个 GameObject 可以挂多个 Area。`UserData` 指向该 Area 组件。
 
 ### 组件生命周期
 
-1. `OnEnable`：按当前 `Transform + Offset` 算中心，`AddCircle` / `AddRect`，记下 `Body`
-2. 之后**不再**读 Transform
+1. `OnEnable`：按当前 `Transform + Offset` 算中心，用组件上的 1 倍尺寸登记，再按**当时**的缩放写一次 `SetScale`
+2. 之后**不再**自己盯 Transform。走路写 `SetPosition`，缩放变了写 `SetScale`
 3. `OnDisable`：`world.Remove(Body)`
 
 对象池回收会走 Disable，Body 会卸掉；再取出 Enable 会重新登记。重新登记后必须再 `SetPosition` 到正确位置（Enable 时用的是当时的 Transform）。
@@ -274,17 +283,28 @@ foreach (var hit in hits)
 
 ### Gizmos
 
-Scene 里画线框。选中时颜色不同。矩形第一版不按 Angle 转。
+Scene 里画线框。选中时颜色不同。矩形第一版不按 Angle 转。框的显示会乘当前缩放，方便你在 1、1 下调，再把人拉到 2、2 看齐不齐。
 
-**Gizmos 画在 Transform 上，库里的 Body 画在上次 SetPosition 上。** 你只挪了 Transform、没 `SetPosition`，框和真实判定会分家。这是刻意的：Gizmos 帮你摆初始形状，运行时判定只认 Body。
+选中组件后，和 BoxCollider2D 一样可以直接拖：
+
+- 矩形：四条边中间各一个点。拖哪条边，对边不动，宽高和 Offset 一起变
+- 圆：上下左右四个点，拖哪边对边不动，圆心和半径一起变；中间一个点只挪位置
+
+Inspector 里有「编辑区域」开关，默认开。关掉就只剩数值。拖出来的宽高/半径仍是 **缩放 1 时** 的数。
+
+**Gizmos 画在 Transform 上，库里的 Body 画在上次 SetPosition / SetScale 上。** 你只挪了 Transform、没写 Body，框和真实判定会分家。这是刻意的。
 
 ### 可选的一次对齐
 
+这三个都不会自己调用。从 Transform 读，写到 Body。
+
 ```csharp
-area.SyncPose(); // 读 Transform+Offset，写到 Body。不会自己调用。
+area.SyncPosition(); // 只同步位置
+area.SyncScale();    // 只同步缩放
+area.SyncPose();     // 位置 + 缩放一起同步
 ```
 
-适合传送、从池子取出后摆好再同步一次。不要当每帧位置源，除非你接受「组件层不再纯手动」。
+只走路用 `SyncPosition` 或 `SetPosition`。只改缩放用 `SyncScale` 或 `SetScale`。传送、出池子后两个都变了，用一次 `SyncPose`。不要每帧盯着 Transform 写。
 
 Unity 侧还有扩展：
 
@@ -292,7 +312,9 @@ Unity 侧还有扩展：
 using TechCosmos.Spatial2D.Unity;
 
 area.Body.SetPosition(new Vector2(x, y));
+area.Body.SetScale(new Vector2(2f, 2f));
 Vector2 p = area.Body.GetPosition();
+Vector2 s = area.Body.GetScale();
 ```
 
 ---
@@ -305,11 +327,25 @@ Vector2 p = area.Body.GetPosition();
 
 ```csharp
 transform.position = next;
-if (area.Body != null && area.Body.IsValid)
-    area.Body.SetPosition(next.x, next.y);
+area.SyncPosition();
 ```
 
 或移动系统只改逻辑坐标、Transform 只是皮，那只 `SetPosition` 即可。
+
+缩放变了（1 → 1.2 → 2 → 5.6）同样写一次：
+
+```csharp
+transform.localScale = new Vector3(2f, 2f, 1f);
+area.SyncScale();
+```
+
+位置和缩放一起变了：
+
+```csharp
+area.SyncPose();
+```
+
+人的缩放是几，框就写几。不要每帧写。
 
 为什么不每帧自动同步：
 
@@ -421,6 +457,7 @@ world.OverlapCircle(x, y, r, _hits, mask);
 |--------|------|------|
 | `TechCosmos.Spatial2D.Core` | 无 Unity | `SpatialWorld` 等 |
 | `TechCosmos.Spatial2D.Unity` | Core | 组件与 `Spatial2D.Default` |
+| `TechCosmos.Spatial2D.Unity.Editor` | Unity | Scene 拖点改大小 |
 
 UPM 名：`com.tech-cosmos.spatial2d`。Unity 2021.3+。
 
@@ -436,5 +473,7 @@ UPM 名：`com.tech-cosmos.spatial2d`。Unity 2021.3+。
 
 挂上组件、单位在走，判定还在出生点 → 移动后没 `SetPosition`。  
 Gizmos 跟着人走、技能打不中 → 你看的是 Transform，库里还是旧坐标。  
+人已经 2 倍大、框还是 1 倍小 → 改了缩放没 `SetScale`。  
+组件上的宽高按 2 倍外观调、场景里物体又是 2 倍 → 框会再乘一次，变成 4 倍。宽高按 **1、1** 调。  
 矩形斜着飞、查询却像正放的盒子 → 第一版矩形不转；斜向框请自己在查询侧用旋转矩形（或先 Overlap 大一点的 AABB 再自己滤）。  
 `hit.other.GetComponent` 编不过 → `SpatialBody` 不是 Unity 组件，走 `UserData`。

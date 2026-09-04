@@ -22,7 +22,18 @@ namespace TechCosmos.Spatial2D.Unity
             => world.AddCircle(x, y, radius, Layer);
 
         protected override void OnDrawAreaGizmos(Vector3 center)
-            => DrawWireCircle(center, radius, 32);
+        {
+            GetDrawScale(out float sx, out _);
+            DrawWireCircle(center, radius * sx, 32);
+        }
+
+        protected override void OnValidate()
+        {
+            radius = Mathf.Max(0f, radius);
+            if (Body != null && Body.IsValid)
+                Body.SetCircle(radius);
+            base.OnValidate();
+        }
 
         static void DrawWireCircle(Vector3 center, float r, int segments)
         {

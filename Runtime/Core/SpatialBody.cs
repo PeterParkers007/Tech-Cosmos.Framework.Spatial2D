@@ -37,5 +37,12 @@ namespace TechCosmos.Spatial2D
         public void SetCircle(float radius) => world.SetCircle(this, radius);
 
         public void SetRect(float width, float height) => world.SetRect(this, width, height);
+
+        /// <summary>人的缩放是几就写几。框按 1 倍尺寸乘这个数，不是叠乘。负数当翻转，按绝对值算大小。</summary>
+        public void SetScale(float scale) => world.SetScale(this, scale, scale);
+
+        public void SetScale(float scaleX, float scaleY) => world.SetScale(this, scaleX, scaleY);
+
+        public void GetScale(out float scaleX, out float scaleY) => world.GetScale(this, out scaleX, out scaleY);
     }
 }

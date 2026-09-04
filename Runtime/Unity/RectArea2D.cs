@@ -48,8 +48,9 @@ namespace TechCosmos.Spatial2D.Unity
 
         protected override void OnDrawAreaGizmos(Vector3 center)
         {
-            float hw = width * 0.5f;
-            float hh = height * 0.5f;
+            GetDrawScale(out float sx, out float sy);
+            float hw = width * 0.5f * sx;
+            float hh = height * 0.5f * sy;
             var a = center + new Vector3(-hw, -hh, 0f);
             var b = center + new Vector3(hw, -hh, 0f);
             var c = center + new Vector3(hw, hh, 0f);
@@ -64,6 +65,14 @@ namespace TechCosmos.Spatial2D.Unity
         {
             if (Body != null && Body.IsValid)
                 Body.SetRect(width, height);
+        }
+
+        protected override void OnValidate()
+        {
+            width = Mathf.Max(0f, width);
+            height = Mathf.Max(0f, height);
+            PushSize();
+            base.OnValidate();
         }
     }
 }

@@ -1,0 +1,16 @@
+{
+    "name": "TechCosmos.Spatial2D.Unity",
+    "rootNamespace": "TechCosmos.Spatial2D.Unity",
+    "references": [
+        "TechCosmos.Spatial2D.Core"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

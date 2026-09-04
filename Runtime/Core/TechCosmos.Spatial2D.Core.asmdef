@@ -1,0 +1,14 @@
+{
+    "name": "TechCosmos.Spatial2D.Core",
+    "rootNamespace": "TechCosmos.Spatial2D",
+    "references": [],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": true
+}

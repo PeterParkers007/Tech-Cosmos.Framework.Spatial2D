@@ -15,16 +15,26 @@ namespace TechCosmos.Spatial2D.Unity.Editor
 
         public override void OnInspectorGUI()
         {
+            if (target == null)
+                return;
+            bool editing = Area2DSceneHandles.DrawEditToggle(target);
             DrawDefaultInspector();
-            EditorGUILayout.Space(4f);
-            Area2DSceneHandles.DrawEditToggle();
-            EditorGUILayout.HelpBox("拖上下左右：对边不动，圆心跟着走。拖中间：只挪位置。半径按缩放 1 时填写。", MessageType.None);
+            if (editing)
+                EditorGUILayout.HelpBox("拖上下左右：对边不动，圆心跟着走。拖中间：只挪位置。半径按缩放 1 时填写。", MessageType.None);
+        }
+
+        void OnDisable()
+        {
+            Area2DSceneHandles.UnlockScene();
         }
 
         void OnSceneGUI()
         {
-            if (!Area2DSceneHandles.IsEditing)
+            if (!Area2DSceneHandles.IsEditing(target))
+            {
+                Area2DSceneHandles.UnlockScene();
                 return;
+            }
 
             var area = (CircleArea2D)target;
             if (area == null)
@@ -53,31 +63,17 @@ namespace TechCosmos.Spatial2D.Unity.Editor
             Area2DSceneHandles.BeginSceneDraw();
 
             if (Area2DSceneHandles.DragAlong(RightId, right, Vector3.right, out Vector3 nextRight))
-            {
                 ApplyDiameter(area, worldLeft, nextRight.x, center.y, center.y, sx);
-                return;
-            }
-
-            if (Area2DSceneHandles.DragAlong(LeftId, left, Vector3.right, out Vector3 nextLeft))
-            {
+            else if (Area2DSceneHandles.DragAlong(LeftId, left, Vector3.right, out Vector3 nextLeft))
                 ApplyDiameter(area, nextLeft.x, worldRight, center.y, center.y, sx);
-                return;
-            }
-
-            if (Area2DSceneHandles.DragAlong(TopId, top, Vector3.up, out Vector3 nextTop))
-            {
+            else if (Area2DSceneHandles.DragAlong(TopId, top, Vector3.up, out Vector3 nextTop))
                 ApplyDiameter(area, center.x, center.x, nextTop.y, worldBottom, sx);
-                return;
-            }
-
-            if (Area2DSceneHandles.DragAlong(BottomId, bottom, Vector3.up, out Vector3 nextBottom))
-            {
+            else if (Area2DSceneHandles.DragAlong(BottomId, bottom, Vector3.up, out Vector3 nextBottom))
                 ApplyDiameter(area, center.x, center.x, worldTop, nextBottom.y, sx);
-                return;
-            }
-
-            if (Area2DSceneHandles.DragFree(CenterId, center, out Vector3 nextCenter))
+            else if (Area2DSceneHandles.DragFree(CenterId, center, out Vector3 nextCenter))
                 Apply(area, area.Radius, nextCenter.x, nextCenter.y);
+
+            Area2DSceneHandles.LockSceneToHandles();
         }
 
         static void ApplyDiameter(

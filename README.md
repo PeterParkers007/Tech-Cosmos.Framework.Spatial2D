@@ -283,28 +283,34 @@ foreach (var hit in hits)
 
 ### Gizmos
 
-Scene 里画线框。选中时颜色不同。矩形第一版不按 Angle 转。框的显示会乘当前缩放，方便你在 1、1 下调，再把人拉到 2、2 看齐不齐。
+Scene 里画两套线框（Play 开着 Gizmos 也能看）：
+
+- **绿 / 选中黄**：跟 Transform + Inspector 尺寸（皮上的框）
+- **品红 / 选中橙**：跟库里 `Body` 的真实坐标和已乘缩放的尺寸（查询用的框）
+
+两套重合就是对齐了；只挪了 Transform、没 `SyncPosition`，品红会停在旧位置。矩形第一版不按 Angle 转。
 
 选中组件后，和 BoxCollider2D 一样可以直接拖：
 
 - 矩形：四条边中间各一个点。拖哪条边，对边不动，宽高和 Offset 一起变
 - 圆：上下左右四个点，拖哪边对边不动，圆心和半径一起变；中间一个点只挪位置
 
-Inspector 里有「编辑区域」开关，默认开。关掉就只剩数值。拖出来的宽高/半径仍是 **缩放 1 时** 的数。
+Inspector 里有「编辑区域」按钮，默认关，和 Unity 的 Edit Collider 一样。点开后才能在 Scene 里拖边，并且这时不能点选或拖走物体、移动工具也藏起来，只能改框。再点「完成编辑」退出。拖出来的宽高/半径仍是 **缩放 1 时** 的数。
 
-**Gizmos 画在 Transform 上，库里的 Body 画在上次 SetPosition / SetScale 上。** 你只挪了 Transform、没写 Body，框和真实判定会分家。这是刻意的。
+绿/黄跟皮，品红/橙跟 `Body`。只挪 Transform、没写 Body，两套框会分开，这是刻意的。
 
 ### 可选的一次对齐
 
 这三个都不会自己调用。从 Transform 读，写到 Body。
 
 ```csharp
-area.SyncPosition(); // 只同步位置
-area.SyncScale();    // 只同步缩放
-area.SyncPose();     // 位置 + 缩放一起同步
+area.SyncPosition();           // 原点用当前 Transform，加 offset
+area.SyncPosition(originX, originY); // 原点你给（ECS 位置），里面加 offset
+area.SyncScale();              // 只同步缩放
+area.SyncPose();               // 位置 + 缩放一起同步
 ```
 
-只走路用 `SyncPosition` 或 `SetPosition`。只改缩放用 `SyncScale` 或 `SetScale`。传送、出池子后两个都变了，用一次 `SyncPose`。不要每帧盯着 Transform 写。
+原点来自 ECS 时用带参数的 `SyncPosition`，不要自己 `Body.SetPosition`。只改缩放用 `SyncScale` 或 `SetScale`。传送、出池子后两个都变了，用一次 `SyncPose`。
 
 Unity 侧还有扩展：
 

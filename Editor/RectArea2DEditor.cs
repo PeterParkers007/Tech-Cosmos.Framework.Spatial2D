@@ -14,16 +14,26 @@ namespace TechCosmos.Spatial2D.Unity.Editor
 
         public override void OnInspectorGUI()
         {
+            if (target == null)
+                return;
+            bool editing = Area2DSceneHandles.DrawEditToggle(target);
             DrawDefaultInspector();
-            EditorGUILayout.Space(4f);
-            Area2DSceneHandles.DrawEditToggle();
-            EditorGUILayout.HelpBox("选中后在 Scene 里拖四条边中间的点改大小，对边不动。宽高按缩放 1 时填写。", MessageType.None);
+            if (editing)
+                EditorGUILayout.HelpBox("拖四条边中间的点改大小，对边不动。宽高按缩放 1 时填写。", MessageType.None);
+        }
+
+        void OnDisable()
+        {
+            Area2DSceneHandles.UnlockScene();
         }
 
         void OnSceneGUI()
         {
-            if (!Area2DSceneHandles.IsEditing)
+            if (!Area2DSceneHandles.IsEditing(target))
+            {
+                Area2DSceneHandles.UnlockScene();
                 return;
+            }
 
             var area = (RectArea2D)target;
             if (area == null)
@@ -45,27 +55,15 @@ namespace TechCosmos.Spatial2D.Unity.Editor
             Area2DSceneHandles.BeginSceneDraw();
 
             if (Area2DSceneHandles.DragAlong(RightId, right, Vector3.right, out Vector3 nextRight))
-            {
                 ApplyHorizontal(area, center.x - hw, nextRight.x, center.y, sx);
-                return;
-            }
-
-            if (Area2DSceneHandles.DragAlong(LeftId, left, Vector3.right, out Vector3 nextLeft))
-            {
+            else if (Area2DSceneHandles.DragAlong(LeftId, left, Vector3.right, out Vector3 nextLeft))
                 ApplyHorizontal(area, nextLeft.x, center.x + hw, center.y, sx);
-                return;
-            }
-
-            if (Area2DSceneHandles.DragAlong(TopId, top, Vector3.up, out Vector3 nextTop))
-            {
+            else if (Area2DSceneHandles.DragAlong(TopId, top, Vector3.up, out Vector3 nextTop))
                 ApplyVertical(area, nextTop.y, center.y - hh, center.x, sy);
-                return;
-            }
-
-            if (Area2DSceneHandles.DragAlong(BottomId, bottom, Vector3.up, out Vector3 nextBottom))
-            {
+            else if (Area2DSceneHandles.DragAlong(BottomId, bottom, Vector3.up, out Vector3 nextBottom))
                 ApplyVertical(area, center.y + hh, nextBottom.y, center.x, sy);
-            }
+
+            Area2DSceneHandles.LockSceneToHandles();
         }
 
         static void ApplyHorizontal(

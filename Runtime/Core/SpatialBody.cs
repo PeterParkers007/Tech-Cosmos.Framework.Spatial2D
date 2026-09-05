@@ -27,6 +27,9 @@ namespace TechCosmos.Spatial2D
 
         public void GetPosition(out float x, out float y) => world.GetPosition(this, out x, out y);
 
+        /// <summary>圆：a 为当前半径，b 为 0。矩形：a / b 为当前半宽 / 半高（已乘缩放）。</summary>
+        public void GetExtents(out float a, out float b) => world.GetExtents(this, out a, out b);
+
         public void SetPosition(float x, float y) => world.SetPosition(this, x, y);
 
         /// <summary>第一版不生效，仅预留。</summary>

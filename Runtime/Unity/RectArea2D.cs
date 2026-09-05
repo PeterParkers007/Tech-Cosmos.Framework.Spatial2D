@@ -48,17 +48,10 @@ namespace TechCosmos.Spatial2D.Unity
 
         protected override void OnDrawAreaGizmos(Vector3 center)
         {
-            GetDrawScale(out float sx, out float sy);
-            float hw = width * 0.5f * sx;
-            float hh = height * 0.5f * sy;
-            var a = center + new Vector3(-hw, -hh, 0f);
-            var b = center + new Vector3(hw, -hh, 0f);
-            var c = center + new Vector3(hw, hh, 0f);
-            var d = center + new Vector3(-hw, hh, 0f);
-            Gizmos.DrawLine(a, b);
-            Gizmos.DrawLine(b, c);
-            Gizmos.DrawLine(c, d);
-            Gizmos.DrawLine(d, a);
+            var s = transform.lossyScale;
+            float hw = width * 0.5f * Mathf.Abs(s.x);
+            float hh = height * 0.5f * Mathf.Abs(s.y);
+            DrawWireAabb(center, hw, hh);
         }
 
         void PushSize()

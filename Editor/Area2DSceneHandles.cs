@@ -10,15 +10,43 @@ namespace TechCosmos.Spatial2D.Unity.Editor
 
         public static readonly Color HandleColor = new Color(0.2f, 0.85f, 0.45f, 1f);
 
-        public static bool IsEditing => SessionState.GetBool(EditKey, true);
+        public static bool IsEditing(UnityEngine.Object obj)
+            => obj != null && SessionState.GetBool(EditKey + obj.GetInstanceID(), false);
 
-        public static bool DrawEditToggle()
+        public static bool DrawEditToggle(UnityEngine.Object obj)
         {
-            bool edit = SessionState.GetBool(EditKey, true);
-            bool next = EditorGUILayout.Toggle("编辑区域", edit);
+            if (obj == null)
+                return false;
+
+            bool edit = IsEditing(obj);
+            EditorGUILayout.Space(2f);
+            bool next = GUILayout.Toggle(edit, edit ? "完成编辑" : "编辑区域", "Button");
             if (next != edit)
-                SessionState.SetBool(EditKey, next);
+            {
+                SessionState.SetBool(EditKey + obj.GetInstanceID(), next);
+                if (!next)
+                    UnlockScene();
+                SceneView.RepaintAll();
+            }
+
             return next;
+        }
+
+        public static void UnlockScene()
+        {
+            Tools.hidden = false;
+        }
+
+        /// <summary>编辑模式里只让拖判定点，挡住选物体和移动工具。</summary>
+        public static void LockSceneToHandles()
+        {
+            Tools.hidden = true;
+            int id = GUIUtility.GetControlID(FocusType.Passive);
+            HandleUtility.AddDefaultControl(id);
+
+            Event e = Event.current;
+            if (e.type == EventType.MouseDown && e.button == 0 && GUIUtility.hotControl == 0)
+                e.Use();
         }
 
         public static Vector3 Center3(Area2D area)

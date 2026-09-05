@@ -111,6 +111,21 @@ namespace TechCosmos.Spatial2D
             y = slot.y;
         }
 
+        /// <summary>圆：a 为当前半径，b 为 0。矩形：a / b 为当前半宽 / 半高（已乘缩放）。</summary>
+        public void GetExtents(SpatialBody body, out float a, out float b)
+        {
+            if (!IsAlive(body))
+            {
+                a = 0f;
+                b = 0f;
+                return;
+            }
+
+            Slot slot = _slots[body.index];
+            a = slot.a;
+            b = slot.b;
+        }
+
         public void SetRotation(SpatialBody body, float angle)
         {
             if (!IsAlive(body))

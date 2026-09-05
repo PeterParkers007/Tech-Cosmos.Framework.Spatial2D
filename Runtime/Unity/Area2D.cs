@@ -6,6 +6,7 @@ namespace TechCosmos.Spatial2D.Unity
     /// 判定区域组件基类：Enable 注册、Disable 注销、Gizmos 画框。
     /// 不自动跟 Transform。移动后请对外面的 <see cref="Body"/> 调 <see cref="SpatialBody.SetPosition"/>，
     /// 或调 <see cref="SyncPosition"/> / <see cref="SyncScale"/> / <see cref="SyncPose"/>。
+    /// Scene Gizmo：绿/黄跟 Transform，品红/橙跟 Body 真实判定；对不上就是没 Sync。
     /// </summary>
     public abstract class Area2D : MonoBehaviour
     {
@@ -50,13 +51,23 @@ namespace TechCosmos.Spatial2D.Unity
             return new Vector2(p.x, p.y);
         }
 
-        /// <summary>只把当前位置写进 Body。不会自己调用。</summary>
+        /// <summary>用当前 Transform 当原点，加 offset 后写进 Body。不会自己调用。</summary>
         public void SyncPosition()
+        {
+            var p = transform.position;
+            SyncPosition(p.x, p.y);
+        }
+
+        /// <summary>
+        /// 用给定世界原点（例如 ECS 位置），加上本地 offset 后写进 Body。
+        /// offset 按当前 Transform 的缩放/旋转变成世界增量。
+        /// </summary>
+        public void SyncPosition(float originX, float originY)
         {
             if (Body == null || !Body.IsValid)
                 return;
-            var c = WorldCenter();
-            Body.SetPosition(c.x, c.y);
+            var delta = transform.TransformVector(new Vector3(offset.x, offset.y, 0f));
+            Body.SetPosition(originX + delta.x, originY + delta.y);
         }
 
         /// <summary>只把当前缩放写进 Body。不会自己调用。人的缩放是几，框就是几。</summary>
@@ -117,6 +128,7 @@ namespace TechCosmos.Spatial2D.Unity
             var c = WorldCenter();
             Gizmos.color = new Color(0.2f, 0.85f, 0.45f, 0.9f);
             OnDrawAreaGizmos(new Vector3(c.x, c.y, 0f));
+            DrawBodyGizmos(new Color(0.95f, 0.2f, 0.55f, 0.95f));
         }
 
         void OnDrawGizmosSelected()
@@ -124,6 +136,50 @@ namespace TechCosmos.Spatial2D.Unity
             var c = WorldCenter();
             Gizmos.color = new Color(1f, 0.85f, 0.2f, 1f);
             OnDrawAreaGizmos(new Vector3(c.x, c.y, 0f));
+            DrawBodyGizmos(new Color(1f, 0.4f, 0.1f, 1f));
+        }
+
+        void DrawBodyGizmos(Color color)
+        {
+            if (Body == null || !Body.IsValid)
+                return;
+
+            Body.GetPosition(out float x, out float y);
+            Body.GetExtents(out float a, out float b);
+            Gizmos.color = color;
+            var center = new Vector3(x, y, 0f);
+            if (Body.Shape == TechCosmos.Spatial2D.ShapeType.Circle)
+                DrawWireCircle(center, a, 32);
+            else
+                DrawWireAabb(center, a, b);
+        }
+
+        protected static void DrawWireCircle(Vector3 center, float radius, int segments)
+        {
+            if (radius <= 0f || segments < 3)
+                return;
+
+            Vector3 prev = center + new Vector3(radius, 0f, 0f);
+            float step = Mathf.PI * 2f / segments;
+            for (int i = 1; i <= segments; i++)
+            {
+                float ang = step * i;
+                var next = center + new Vector3(Mathf.Cos(ang) * radius, Mathf.Sin(ang) * radius, 0f);
+                Gizmos.DrawLine(prev, next);
+                prev = next;
+            }
+        }
+
+        protected static void DrawWireAabb(Vector3 center, float halfWidth, float halfHeight)
+        {
+            var a = center + new Vector3(-halfWidth, -halfHeight, 0f);
+            var b = center + new Vector3(halfWidth, -halfHeight, 0f);
+            var c = center + new Vector3(halfWidth, halfHeight, 0f);
+            var d = center + new Vector3(-halfWidth, halfHeight, 0f);
+            Gizmos.DrawLine(a, b);
+            Gizmos.DrawLine(b, c);
+            Gizmos.DrawLine(c, d);
+            Gizmos.DrawLine(d, a);
         }
 
         protected virtual void OnValidate()

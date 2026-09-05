@@ -1,6 +1,6 @@
 {
   "name": "com.tech-cosmos.spatial2d",
-  "version": "1.2.0",
+  "version": "1.3.1",
   "displayName": "2D 空间判定",
   "description": "纯 C# 2D 空间查询库（圆 / 矩形）+ Unity 组件层。不跑物理、不回调；位置由外部 SetPosition。",
   "unity": "2021.3",
